@@ -1,0 +1,104 @@
+﻿@model CatalogPageViewModel
+
+<h2>Menu Catalog</h2>
+
+<form method="get" asp-controller="Catalog" asp-action="Index">
+    <input type="text" name="searchTerm" value="@Model.SearchTerm" placeholder="Search menu item..." />
+
+    <select name="sortOrder">
+        <option value="asc" selected="@(Model.SortOrder == "asc")">Price: Low to High</option>
+        <option value="desc" selected="@(Model.SortOrder == "desc")">Price: High to Low</option>
+    </select>
+
+    <button type="submit">Search / Sort</button>
+</form>
+
+<hr />
+
+<p><strong>Status:</strong> @Model.Status</p>
+
+@if (Model.Items != null && Model.Items.Any())
+{
+    <table border="1" cellpadding="8" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Menu Item</th>
+                <th>Price</th>
+                <th>Translate</th>
+                <th>Translated Text</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @for (int i = 0; i < Model.Items.Count; i++)
+            {
+                var item = Model.Items[i];
+
+                <tr>
+                    <td id="item-name-@i">@item.Name</td>
+                    <td>€@item.Price.ToString("0.00")</td>
+
+                    <td>
+                        @if (Model.Status == "confirmed" || Model.Status == "completed")
+                        {
+                            <select id="language-@i">
+                                <option value="it">Italian</option>
+                                <option value="fr">French</option>
+                                <option value="es">Spanish</option>
+                                <option value="de">German</option>
+                            </select>
+
+                            <button type="button" onclick="translateItem(@i)">Translate</button>
+                        }
+                        else
+                        {
+                            <span>Not available until completed</span>
+                        }
+                    </td>
+
+                    <td id="translated-@i"></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No menu items found.</p>
+}
+
+<script>
+    async function translateItem(index) {
+        const text = document.getElementById(`item-name-${index}`).innerText;
+        const language = document.getElementById(`language-${index}`).value;
+        const output = document.getElementById(`translated-${index}`);
+
+        output.innerText = "Translating...";
+
+        try {
+            const response = await fetch('/Catalog/Translate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    text: text,
+                    targetLanguage: language
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                output.style.color = "green";
+                output.innerText = result.translatedText + " (" + result.source + ")";
+            } else {
+                output.style.color = "red";
+                output.innerText = result.message || "Translation failed";
+            }
+        } catch (error) {
+            output.style.color = "red";
+            output.innerText = "Translation failed";
+        }
+    }
+</script>
